@@ -1,0 +1,47 @@
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*.sublime-workspace
+*.sublime-project
+
+# ZAP output (if anyone clones and runs locally)
+zap_reports/
+report_html.html
+report_json.json
+report_xml.xml
+report_md.md
+zap.out
+*.zap
+
+# Dependency Check output (if run locally)
+dependency-check-reports/
+
+# Secrets — just in case
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Node (if any tooling is added later)
+node_modules/
+npm-debug.log*
+
+# Python (if any tooling is added later)
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+
+# Temp
+*.tmp
+*.bak
+*.orig

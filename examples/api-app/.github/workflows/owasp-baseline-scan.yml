@@ -1,0 +1,70 @@
+# =============================================================================
+# Example: API App — OWASP Baseline + Active Scan
+# =============================================================================
+# This example shows a repo that has both a web UI and a REST API.
+# Uses the baseline scan for routine scanning after deployments,
+# and the active scan for deeper security testing on demand.
+#
+# SETUP:
+#   1. Replace ComputerNiagara/github-owasp-templates with your fork if using self-hosted runners
+#   2. Replace URLs with your actual environment URLs
+#   3. Set up the 'security-approved' environment in your repo settings
+#      before using the active scan
+# =============================================================================
+
+name: OWASP Baseline Scan
+
+on:
+  deployment_status:
+
+  workflow_dispatch:
+    inputs:
+      target_url:
+        description: 'URL of the deployed app to scan'
+        required: true
+        type: string
+        default: 'http://testphp.vulnweb.com'
+      environment:
+        description: 'Environment being scanned'
+        required: true
+        type: choice
+        options: [dev, ist, uat]
+
+jobs:
+  scan-on-deployment:
+    name: Scan [${{ github.event.deployment.environment }}]
+    if: |
+      github.event_name == 'deployment_status' &&
+      github.event.deployment_status.state == 'success' &&
+      github.event.deployment_status.environment_url != '' &&
+      (
+        github.event.deployment.environment == 'dev' ||
+        github.event.deployment.environment == 'ist' ||
+        github.event.deployment.environment == 'uat'
+      )
+    uses: ComputerNiagara/github-owasp-templates/.github/workflows/owasp-baseline-reusable.yml@v1
+    with:
+      target_url: ${{ github.event.deployment_status.environment_url }}
+      environment: ${{ github.event.deployment.environment }}
+      runner: 'ubuntu-latest'
+      # ↑ Public app (internet accessible):  'ubuntu-latest'
+      # ↑ Internal app (behind firewall):    'self-hosted' or your runner label
+      #   Requirements: Docker installed, network access to target URL,
+      #                 outbound access to ghcr.io for ZAP image pull
+      fail_on_warn: false
+    secrets:
+      ZAP_AUTH_HEADER_VALUE: ${{ secrets.ZAP_AUTH_HEADER_VALUE }}
+
+  scan-manual:
+    name: Manual Scan [${{ github.event.inputs.environment }}]
+    if: github.event_name == 'workflow_dispatch'
+    uses: ComputerNiagara/github-owasp-templates/.github/workflows/owasp-baseline-reusable.yml@v1
+    with:
+      target_url: ${{ github.event.inputs.target_url }}
+      environment: ${{ github.event.inputs.environment }}
+      runner: 'ubuntu-latest'
+      # ↑ Public app (internet accessible):  'ubuntu-latest'
+      # ↑ Internal app (behind firewall):    'self-hosted' or your runner label
+      fail_on_warn: false
+    secrets:
+      ZAP_AUTH_HEADER_VALUE: ${{ secrets.ZAP_AUTH_HEADER_VALUE }}

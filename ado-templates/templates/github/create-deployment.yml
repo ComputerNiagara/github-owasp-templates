@@ -1,0 +1,99 @@
+# =============================================================================
+# Create GitHub Deployment — ADO Reusable Template
+# =============================================================================
+# Repo:  your-ado-org/shared-templates (your central ADO templates repo)
+# Path:  templates/github/create-deployment.yml
+#
+# Purpose: Creates a GitHub Deployment record at the START of your ADO
+#          deploy job. Returns a deploymentId used by update-deployment.yml
+#          at the end of the job to report success or failure.
+#
+#          When combined with update-deployment.yml, this enables the
+#          GitHub deployment_status event which triggers the OWASP ZAP
+#          baseline scan automatically after every successful deployment.
+#
+# This is step 1 of 2. See update-deployment.yml for step 2.
+#
+# PREREQUISITES:
+#   - A GitHub PAT or GitHub App token stored as an ADO secret variable
+#     with repo_deployments scope on the target GitHub repo
+#   - The variable group or pipeline variable containing the token must
+#     be linked before calling this template
+#
+# USAGE in your ADO pipeline:
+#   - template: templates/github/create-deployment.yml@shared-templates
+#     parameters:
+#       githubOrg: 'your-org'
+#       githubRepo: 'your-repo'
+#       environment: 'dev'
+#       githubPat: $(GITHUB_PAT)
+# =============================================================================
+
+parameters:
+  # ------------------------------------------------------------------
+  # Required
+  # ------------------------------------------------------------------
+  - name: githubOrg
+    type: string
+    displayName: 'GitHub organization or user name'
+
+  - name: githubRepo
+    type: string
+    displayName: 'GitHub repository name'
+
+  - name: environment
+    type: string
+    displayName: 'Environment name (must match ZAP filter: dev, ist, uat)'
+
+  - name: githubPat
+    type: string
+    displayName: 'GitHub PAT or App token with repo_deployments scope'
+
+  # ------------------------------------------------------------------
+  # Optional
+  # ------------------------------------------------------------------
+  - name: gitRef
+    type: string
+    displayName: 'Git ref to deploy (commit SHA, branch, tag)'
+    default: '$(Build.SourceVersion)'
+
+  - name: deploymentIdVariable
+    type: string
+    displayName: 'ADO pipeline variable name to store the deployment ID'
+    default: 'githubDeploymentId'
+
+steps:
+  - script: |
+      echo "Creating GitHub Deployment..."
+      echo "Org/Repo:    ${{ parameters.githubOrg }}/${{ parameters.githubRepo }}"
+      echo "Environment: ${{ parameters.environment }}"
+      echo "Ref:         ${{ parameters.gitRef }}"
+
+      RESPONSE=$(curl -s -X POST \
+        -H "Authorization: Bearer ${{ parameters.githubPat }}" \
+        -H "Accept: application/vnd.github+json" \
+        -H "X-GitHub-Api-Version: 2022-11-28" \
+        https://api.github.com/repos/${{ parameters.githubOrg }}/${{ parameters.githubRepo }}/deployments \
+        -d "{
+          \"ref\": \"${{ parameters.gitRef }}\",
+          \"environment\": \"${{ parameters.environment }}\",
+          \"description\": \"Deployed by ADO pipeline $(Build.BuildNumber)\",
+          \"auto_merge\": false,
+          \"required_contexts\": []
+        }")
+
+      DEPLOYMENT_ID=$(echo $RESPONSE | jq -r '.id')
+
+      if [ "$DEPLOYMENT_ID" = "null" ] || [ -z "$DEPLOYMENT_ID" ]; then
+        echo "##[error] Failed to create GitHub Deployment."
+        echo "Response: $RESPONSE"
+        exit 1
+      fi
+
+      echo "✅ Created deployment ID: $DEPLOYMENT_ID"
+
+      # Store deployment ID as an ADO pipeline variable
+      # so subsequent steps and jobs can reference it
+      echo "##vso[task.setvariable variable=${{ parameters.deploymentIdVariable }};isOutput=true]$DEPLOYMENT_ID"
+    displayName: 'Create GitHub Deployment [${{ parameters.environment }}]'
+    name: createDeployment

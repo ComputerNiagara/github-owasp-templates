@@ -1,0 +1,90 @@
+# =============================================================================
+# Example: API App — OWASP Active Scan
+# =============================================================================
+# ⚠️  READ BEFORE USING — this scan sends REAL ATTACK PAYLOADS
+#
+# REQUIREMENTS:
+#   1. Target MUST be an isolated environment with throwaway data
+#   2. Set up the 'security-approved' environment in repo Settings → Environments
+#      and add required reviewers before triggering this workflow
+#   3. Never target shared DEV, IST, UAT, or production environments
+#
+# SETUP:
+#   1. Replace ComputerNiagara/github-owasp-templates with your fork if using self-hosted runners
+#   2. Repo → Settings → Environments → New → security-approved
+#      → Required reviewers → add your security reviewer
+# =============================================================================
+
+name: OWASP Active Scan ⚠️
+
+on:
+  workflow_dispatch:
+    inputs:
+      scan_type:
+        description: 'Scan type to run'
+        required: true
+        type: choice
+        options:
+          - full-scan        # Web app — attacks pages and forms
+          - api-scan         # API — requires OpenAPI spec URL below
+          - both
+        default: full-scan
+
+      target_url:
+        description: '⚠️ Isolated environment URL ONLY — never DEV/IST/UAT/prod'
+        required: true
+        type: string
+
+      openapi_spec_url:
+        description: 'OpenAPI/Swagger spec URL — required for api-scan or both'
+        required: false
+        type: string
+
+      environment:
+        description: 'Label for this scan run'
+        required: true
+        type: string
+        default: 'scan-isolated'
+
+      confirmed_isolated:
+        description: '✅ I confirm the target is an isolated environment with throwaway data'
+        required: true
+        type: boolean
+        default: false
+
+jobs:
+  preflight-check:
+    name: Preflight Safety Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Isolation Confirmation Check
+        run: |
+          if [ "${{ github.event.inputs.confirmed_isolated }}" != "true" ]; then
+            echo "❌ Isolation not confirmed. Re-run and check the confirmation box."
+            exit 1
+          fi
+          echo "✅ Isolation confirmed."
+
+      - name: OpenAPI Spec Check
+        run: |
+          SCAN_TYPE="${{ github.event.inputs.scan_type }}"
+          SPEC_URL="${{ github.event.inputs.openapi_spec_url }}"
+          if { [ "$SCAN_TYPE" = "api-scan" ] || [ "$SCAN_TYPE" = "both" ]; } && [ -z "$SPEC_URL" ]; then
+            echo "❌ openapi_spec_url is required for '$SCAN_TYPE'."
+            exit 1
+          fi
+          echo "✅ Inputs valid. Proceeding to approval gate."
+
+  active-scan:
+    name: Active Scan [${{ github.event.inputs.scan_type }}]
+    needs: preflight-check
+    uses: ComputerNiagara/github-owasp-templates/.github/workflows/owasp-active-reusable.yml@v1
+    with:
+      scan_type: ${{ github.event.inputs.scan_type }}
+      target_url: ${{ github.event.inputs.target_url }}
+      openapi_spec_url: ${{ github.event.inputs.openapi_spec_url }}
+      environment: ${{ github.event.inputs.environment }}
+      runner: 'ubuntu-latest'
+      fail_on_warn: true
+    secrets:
+      ZAP_AUTH_HEADER_VALUE: ${{ secrets.ZAP_AUTH_HEADER_VALUE }}

@@ -1,0 +1,72 @@
+# =============================================================================
+# Create GitHub Deployment — Reusable Workflow
+# =============================================================================
+# Repo:  your-username/github-owasp-templates
+# Path:  .github/workflows/create-deployment.yml
+#
+# Purpose: Creates a GitHub Deployment record at the START of your deploy job.
+#          Returns a deployment_id that you pass to update-deployment.yml
+#          at the end of the job to report success or failure.
+#
+#          When combined with update-deployment.yml, this enables the
+#          deployment_status event which triggers the OWASP baseline scan
+#          automatically after every successful deployment.
+#
+# This is step 1 of 2. See update-deployment.yml for step 2.
+#
+# Reference this workflow from your deploy workflow:
+#   uses: your-username/github-owasp-templates/.github/workflows/create-deployment.yml@v1
+# =============================================================================
+
+name: Create Deployment (Reusable)
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: 'Environment being deployed to (e.g. dev, ist, uat)'
+        required: true
+        type: string
+    outputs:
+      deployment_id:
+        description: 'GitHub Deployment ID — pass this to update-deployment.yml'
+        value: ${{ jobs.create.outputs.deployment_id }}
+
+permissions:
+  contents: read
+  deployments: write
+
+jobs:
+  create:
+    name: Create Deployment Record [${{ inputs.environment }}]
+    runs-on: ubuntu-latest
+    outputs:
+      deployment_id: ${{ steps.create.outputs.deployment_id }}
+
+    steps:
+      - name: Create GitHub Deployment
+        id: create
+        run: |
+          RESPONSE=$(curl -s -X POST \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            https://api.github.com/repos/${{ github.repository }}/deployments \
+            -d '{
+              "ref": "${{ github.sha }}",
+              "environment": "${{ inputs.environment }}",
+              "description": "Deploying to ${{ inputs.environment }}",
+              "auto_merge": false,
+              "required_contexts": []
+            }')
+
+          DEPLOYMENT_ID=$(echo $RESPONSE | jq -r '.id')
+
+          if [ "$DEPLOYMENT_ID" = "null" ] || [ -z "$DEPLOYMENT_ID" ]; then
+            echo "❌ Failed to create deployment. Response:"
+            echo $RESPONSE | jq .
+            exit 1
+          fi
+
+          echo "✅ Created deployment ID: $DEPLOYMENT_ID"
+          echo "deployment_id=$DEPLOYMENT_ID" >> $GITHUB_OUTPUT

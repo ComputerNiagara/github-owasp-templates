@@ -1,0 +1,132 @@
+# =============================================================================
+# Update GitHub Deployment Status — ADO Reusable Template
+# =============================================================================
+# Repo:  your-ado-org/shared-templates (your central ADO templates repo)
+# Path:  templates/github/update-deployment.yml
+#
+# Purpose: Updates an existing GitHub Deployment record with success or
+#          failure at the END of your ADO deploy job.
+#
+#          On success — sets environment_url so the OWASP ZAP baseline scan
+#          knows what URL to scan. GitHub fires the deployment_status event
+#          which triggers owasp-baseline-scan.yml in the GitHub repo.
+#
+#          On failure — marks deployment failed. ZAP does NOT fire.
+#
+# This is step 2 of 2. See create-deployment.yml for step 1.
+#
+# USAGE in your ADO pipeline:
+#   - template: templates/github/update-deployment.yml@shared-templates
+#     parameters:
+#       githubOrg: 'your-org'
+#       githubRepo: 'your-repo'
+#       environment: 'dev'
+#       deploymentId: $(createDeployment.githubDeploymentId)
+#       status: 'success'
+#       environmentUrl: 'https://your-app-dev.yourcompany.com'
+#       githubPat: $(GITHUB_PAT)
+# =============================================================================
+
+parameters:
+  # ------------------------------------------------------------------
+  # Required
+  # ------------------------------------------------------------------
+  - name: githubOrg
+    type: string
+    displayName: 'GitHub organization or user name'
+
+  - name: githubRepo
+    type: string
+    displayName: 'GitHub repository name'
+
+  - name: environment
+    type: string
+    displayName: 'Environment name (must match ZAP filter: dev, ist, uat)'
+
+  - name: deploymentId
+    type: string
+    displayName: 'GitHub Deployment ID from create-deployment.yml'
+
+  - name: status
+    type: string
+    displayName: 'Deployment result: success or failure'
+    values:
+      - success
+      - failure
+
+  - name: githubPat
+    type: string
+    displayName: 'GitHub PAT or App token with repo_deployments scope'
+
+  # ------------------------------------------------------------------
+  # Optional
+  # ------------------------------------------------------------------
+  - name: environmentUrl
+    type: string
+    displayName: >
+      Live URL of the deployed app — this is what ZAP will scan.
+      Required when status is success for automatic ZAP triggering.
+    default: ''
+
+  - name: description
+    type: string
+    displayName: 'Human readable deployment status description'
+    default: ''
+
+steps:
+  # ------------------------------------------------------------------
+  # Success path — sets environment_url so ZAP knows what to scan
+  # GitHub fires deployment_status event after this step
+  # ------------------------------------------------------------------
+  - ${{ if eq(parameters.status, 'success') }}:
+    - script: |
+        if [ -z "${{ parameters.environmentUrl }}" ]; then
+          echo "##[warning] environmentUrl is empty — ZAP will not be able to determine the scan target."
+          echo "           Set environmentUrl to your deployed app URL for automatic ZAP triggering."
+        fi
+
+        DESCRIPTION="${{ parameters.description }}"
+        if [ -z "$DESCRIPTION" ]; then
+          DESCRIPTION="Deployment to ${{ parameters.environment }} succeeded (ADO build $(Build.BuildNumber))"
+        fi
+
+        curl -s -X POST \
+          -H "Authorization: Bearer ${{ parameters.githubPat }}" \
+          -H "Accept: application/vnd.github+json" \
+          -H "X-GitHub-Api-Version: 2022-11-28" \
+          https://api.github.com/repos/${{ parameters.githubOrg }}/${{ parameters.githubRepo }}/deployments/${{ parameters.deploymentId }}/statuses \
+          -d "{
+            \"state\": \"success\",
+            \"environment\": \"${{ parameters.environment }}\",
+            \"environment_url\": \"${{ parameters.environmentUrl }}\",
+            \"description\": \"$DESCRIPTION\"
+          }"
+
+        echo "✅ Deployment ${{ parameters.deploymentId }} marked as success"
+        echo "🔍 ZAP will scan: ${{ parameters.environmentUrl }}"
+      displayName: 'Mark Deployment Successful [${{ parameters.environment }}]'
+
+  # ------------------------------------------------------------------
+  # Failure path — ZAP does NOT fire on failed deployments
+  # ------------------------------------------------------------------
+  - ${{ if eq(parameters.status, 'failure') }}:
+    - script: |
+        DESCRIPTION="${{ parameters.description }}"
+        if [ -z "$DESCRIPTION" ]; then
+          DESCRIPTION="Deployment to ${{ parameters.environment }} failed (ADO build $(Build.BuildNumber))"
+        fi
+
+        curl -s -X POST \
+          -H "Authorization: Bearer ${{ parameters.githubPat }}" \
+          -H "Accept: application/vnd.github+json" \
+          -H "X-GitHub-Api-Version: 2022-11-28" \
+          https://api.github.com/repos/${{ parameters.githubOrg }}/${{ parameters.githubRepo }}/deployments/${{ parameters.deploymentId }}/statuses \
+          -d "{
+            \"state\": \"failure\",
+            \"environment\": \"${{ parameters.environment }}\",
+            \"description\": \"$DESCRIPTION\"
+          }"
+
+        echo "❌ Deployment ${{ parameters.deploymentId }} marked as failure"
+        echo "ℹ️  ZAP scan will not trigger on failed deployments"
+      displayName: 'Mark Deployment Failed [${{ parameters.environment }}]'

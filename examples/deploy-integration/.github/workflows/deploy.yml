@@ -1,0 +1,75 @@
+# =============================================================================
+# Example: Full Deploy Integration
+# =============================================================================
+# This example shows how to wire up your deployment workflow so that the
+# OWASP baseline scan fires automatically after every successful deployment.
+#
+# HOW IT WORKS:
+#   1. create-deployment.yml creates a GitHub Deployment record at the start
+#   2. Your deploy steps run as normal
+#   3. update-deployment.yml reports success + sets the environment_url
+#   4. GitHub fires the deployment_status event
+#   5. owasp-baseline-scan.yml wakes up and scans the deployed URL
+#
+# SETUP:
+#   1. Replace ComputerNiagara/github-owasp-templates with your fork if using self-hosted runners
+#   2. Replace environment_url with your actual DEV app URL
+#   3. Add your actual deploy steps where indicated
+#   4. Add owasp-baseline-scan.yml to the same repo (see basic-web-app example)
+# =============================================================================
+
+name: Deploy to DEV
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    name: Deploy to DEV
+    runs-on: ubuntu-latest
+    steps:
+      # ---------------------------------------------------------------
+      # Step 1 — Create deployment record at the start
+      # Returns a deployment_id used in steps 2 and 3
+      # ---------------------------------------------------------------
+      - name: Create Deployment
+        id: deployment
+        uses: ComputerNiagara/github-owasp-templates/.github/workflows/create-deployment.yml@v1
+        with:
+          environment: dev
+
+      # ---------------------------------------------------------------
+      # Your existing deploy steps go here
+      # ---------------------------------------------------------------
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Deploy Application
+        run: |
+          echo "Add your deploy steps here..."
+          # e.g. az webapp deploy, kubectl apply, docker push, etc.
+
+      # ---------------------------------------------------------------
+      # Step 2 — Report success
+      # Set environment_url to your live app URL — ZAP will scan this
+      # ---------------------------------------------------------------
+      - name: Report Deployment Success
+        if: success()
+        uses: ComputerNiagara/github-owasp-templates/.github/workflows/update-deployment.yml@v1
+        with:
+          deployment_id: ${{ steps.deployment.outputs.deployment_id }}
+          environment: dev
+          status: success
+          environment_url: 'https://your-app-dev.yourcompany.com'
+
+      # ---------------------------------------------------------------
+      # Step 3 — Report failure (ZAP will NOT fire on failure)
+      # ---------------------------------------------------------------
+      - name: Report Deployment Failure
+        if: failure()
+        uses: ComputerNiagara/github-owasp-templates/.github/workflows/update-deployment.yml@v1
+        with:
+          deployment_id: ${{ steps.deployment.outputs.deployment_id }}
+          environment: dev
+          status: failure

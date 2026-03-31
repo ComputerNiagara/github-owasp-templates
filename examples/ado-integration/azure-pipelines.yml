@@ -1,0 +1,107 @@
+# =============================================================================
+# Example: ADO Pipeline with GitHub Deployment Reporting
+# =============================================================================
+# This pipeline deploys your app and reports deployment status back to GitHub
+# so that the OWASP ZAP baseline scan fires automatically after each deploy.
+#
+# PREREQUISITES:
+#   1. A GitHub repo with owasp-baseline-scan.yml configured
+#      (from github-owasp-templates)
+#   2. A GitHub PAT with repo_deployments scope stored as an ADO secret:
+#      ADO → Project Settings → Library → Variable Groups → New
+#      Add variable: GITHUB_PAT (mark as secret)
+#   3. The shared-templates repo resource configured below
+#
+# SETUP:
+#   1. Replace YOUR-ADO-ORG with your Azure DevOps org name
+#   2. Replace YOUR-GITHUB-ORG with your GitHub org name
+#   3. Replace YOUR-GITHUB-REPO with your GitHub repo name
+#   4. Replace environment_url with your actual DEV app URL
+#   5. Link your variable group containing GITHUB_PAT
+# =============================================================================
+
+trigger:
+  branches:
+    include:
+      - main
+
+pool:
+  vmImage: ubuntu-latest
+
+# ------------------------------------------------------------------
+# Link the shared templates repo
+# This is where create-deployment.yml and update-deployment.yml live
+# ------------------------------------------------------------------
+resources:
+  repositories:
+    - repository: shared-templates
+      type: git
+      name: YOUR-ADO-ORG/shared-templates    # TODO: replace with your ADO org
+      ref: refs/heads/main
+
+# ------------------------------------------------------------------
+# Link variable group containing GITHUB_PAT
+# ------------------------------------------------------------------
+variables:
+  - group: github-deployment-secrets        # TODO: create this variable group
+  - name: githubOrg
+    value: 'YOUR-GITHUB-ORG'               # TODO: replace
+  - name: githubRepo
+    value: 'YOUR-GITHUB-REPO'              # TODO: replace
+  - name: environment
+    value: 'dev'                            # must be dev, ist, or uat
+
+stages:
+  - stage: Deploy
+    displayName: Deploy to DEV
+    jobs:
+      - job: DeployApp
+        displayName: Deploy Application
+        steps:
+          # ---------------------------------------------------------------
+          # Step 1 — Create GitHub Deployment record at the start
+          # Stores deployment ID in $(createDeployment.githubDeploymentId)
+          # ---------------------------------------------------------------
+          - template: templates/github/create-deployment.yml@shared-templates
+            parameters:
+              githubOrg: $(githubOrg)
+              githubRepo: $(githubRepo)
+              environment: $(environment)
+              githubPat: $(GITHUB_PAT)
+
+          # ---------------------------------------------------------------
+          # Your existing deploy steps go here — no changes needed
+          # ---------------------------------------------------------------
+          - script: |
+              echo "Add your deploy steps here..."
+              # e.g. AzureWebApp@1, KubernetesManifest@1, AzureCLI@2, etc.
+            displayName: 'Deploy Application'
+
+          # ---------------------------------------------------------------
+          # Step 2 — Report success
+          # Set environmentUrl to your live app URL — ZAP will scan this
+          # GitHub fires deployment_status event after this step
+          # ---------------------------------------------------------------
+          - template: templates/github/update-deployment.yml@shared-templates
+            parameters:
+              githubOrg: $(githubOrg)
+              githubRepo: $(githubRepo)
+              environment: $(environment)
+              deploymentId: $(createDeployment.githubDeploymentId)
+              status: success
+              environmentUrl: 'https://your-app-dev.yourcompany.com'  # TODO: replace
+              githubPat: $(GITHUB_PAT)
+            condition: succeeded()
+
+          # ---------------------------------------------------------------
+          # Step 3 — Report failure (ZAP will NOT fire on failure)
+          # ---------------------------------------------------------------
+          - template: templates/github/update-deployment.yml@shared-templates
+            parameters:
+              githubOrg: $(githubOrg)
+              githubRepo: $(githubRepo)
+              environment: $(environment)
+              deploymentId: $(createDeployment.githubDeploymentId)
+              status: failure
+              githubPat: $(GITHUB_PAT)
+            condition: failed()
