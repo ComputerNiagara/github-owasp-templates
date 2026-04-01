@@ -150,15 +150,23 @@ jobs:
         run: chmod 777 ${{ github.workspace }}
 
       - name: ZAP Full Scan
-        uses: zaproxy/action-full-scan@v0.10.0
+        uses: zaproxy/action-full-scan@v0.13.0
         with:
           target: ${{ inputs.target_url }}
           token: ${{ secrets.GITHUB_TOKEN }}
           fail_action: ${{ inputs.fail_on_warn }}
           issue_title: '[${{ inputs.environment }}] ZAP Full Scan Findings'
-          artifact_name: 'zap-full-scan-report'
+          artifact_name: ''
           allow_issue_writing: true
           cmd_options: '-a'
+
+      - name: Upload ZAP Full Scan Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: zap-full-scan-report
+          path: report_html.html
+          if-no-files-found: warn
 
   # ============================================================
   # ZAP API Scan — API Active DAST
@@ -192,15 +200,23 @@ jobs:
         run: chmod 777 ${{ github.workspace }}
 
       - name: ZAP API Scan
-        uses: zaproxy/action-api-scan@v0.7.0
+        uses: zaproxy/action-api-scan@v0.10.0
         with:
           target: ${{ inputs.openapi_spec_url }}
           token: ${{ secrets.GITHUB_TOKEN }}
           fail_action: ${{ inputs.fail_on_warn }}
           issue_title: '[${{ inputs.environment }}] ZAP API Scan Findings'
-          artifact_name: 'zap-api-scan-report'
+          artifact_name: ''
           allow_issue_writing: true
           format: openapi
+
+      - name: Upload ZAP API Scan Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: zap-api-scan-report
+          path: report_html.html
+          if-no-files-found: warn
 
   # ============================================================
   # Summary
