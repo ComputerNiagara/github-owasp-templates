@@ -118,7 +118,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           fail_action: ${{ inputs.fail_on_warn }}
           issue_title: '[${{ inputs.environment }}] ZAP Baseline Findings'
-          artifact_name: 'zap-baseline-report-${{ inputs.environment }}'
+          artifact_name: 'zap-baseline-report'
           allow_issue_writing: true
           # NOTE: cmd_options '-a' is intentionally omitted — that flag enables
           # active scanning. Active scanning belongs in owasp-active-reusable.yml.

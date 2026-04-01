@@ -146,6 +146,9 @@ jobs:
           echo "Environment: ${{ inputs.environment }}"
           echo "Time (UTC):  $(date -u)"
 
+      - name: Fix ZAP workspace permissions
+        run: chmod 777 ${{ github.workspace }}
+
       - name: ZAP Full Scan
         uses: zaproxy/action-full-scan@v0.10.0
         with:
@@ -153,7 +156,8 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           fail_action: ${{ inputs.fail_on_warn }}
           issue_title: '[${{ inputs.environment }}] ZAP Full Scan Findings'
-          artifact_name: 'zap-full-scan-report-${{ inputs.environment }}'
+          artifact_name: 'zap-full-scan-report'
+          allow_issue_writing: true
           cmd_options: '-a'
 
   # ============================================================
@@ -184,6 +188,9 @@ jobs:
           echo "Environment: ${{ inputs.environment }}"
           echo "Time (UTC):  $(date -u)"
 
+      - name: Fix ZAP workspace permissions
+        run: chmod 777 ${{ github.workspace }}
+
       - name: ZAP API Scan
         uses: zaproxy/action-api-scan@v0.7.0
         with:
@@ -191,7 +198,8 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           fail_action: ${{ inputs.fail_on_warn }}
           issue_title: '[${{ inputs.environment }}] ZAP API Scan Findings'
-          artifact_name: 'zap-api-scan-report-${{ inputs.environment }}'
+          artifact_name: 'zap-api-scan-report'
+          allow_issue_writing: true
           format: openapi
 
   # ============================================================
