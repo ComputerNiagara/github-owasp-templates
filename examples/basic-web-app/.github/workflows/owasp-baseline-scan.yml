@@ -17,6 +17,8 @@ name: OWASP Baseline Scan
 
 on:
   # Fires automatically after a successful deployment
+  # In GitHub Enterprise this is all you need — deployment_status fires
+  # correctly for Actions-created deployments in enterprise environments.
   deployment_status:
 
   # Manual fallback — use before pipeline integration is set up
