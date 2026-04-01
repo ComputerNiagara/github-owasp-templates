@@ -1,0 +1,118 @@
+# =============================================================================
+# Update GitHub Deployment Status — Composite Action
+# =============================================================================
+# Repo:  ComputerNiagara/github-owasp-templates
+# Path:  actions/update-deployment/action.yml
+#
+# Purpose: Updates an existing GitHub Deployment record with success or failure
+#          at the END of your deploy job.
+#
+#          On success — sets environment_url so ZAP knows what URL to scan.
+#          GitHub fires the deployment_status event which triggers
+#          owasp-baseline-scan.yml automatically.
+#
+#          On failure — marks deployment failed. ZAP does NOT fire.
+#
+#          Runs in the caller's context — github.repository resolves to the
+#          calling repo automatically.
+#
+# Usage:
+#   - name: Report Success
+#     uses: ComputerNiagara/github-owasp-templates/actions/update-deployment@v1
+#     if: success()
+#     with:
+#       deployment_id: ${{ steps.deployment.outputs.deployment_id }}
+#       environment: dev
+#       status: success
+#       environment_url: 'https://your-app-dev.yourcompany.com'
+#       token: ${{ secrets.GITHUB_TOKEN }}
+#
+#   - name: Report Failure
+#     uses: ComputerNiagara/github-owasp-templates/actions/update-deployment@v1
+#     if: failure()
+#     with:
+#       deployment_id: ${{ steps.deployment.outputs.deployment_id }}
+#       environment: dev
+#       status: failure
+#       token: ${{ secrets.GITHUB_TOKEN }}
+# =============================================================================
+
+name: 'Update GitHub Deployment Status'
+description: 'Reports deployment success or failure to GitHub, triggering automatic OWASP ZAP scanning on success'
+
+inputs:
+  deployment_id:
+    description: 'Deployment ID returned by create-deployment'
+    required: true
+  environment:
+    description: 'Environment being deployed to (e.g. dev, ist, uat)'
+    required: true
+  status:
+    description: 'Result of the deployment: success or failure'
+    required: true
+  token:
+    description: 'GitHub token with deployments write permission'
+    required: true
+  environment_url:
+    description: 'Live URL of the deployed app — ZAP will scan this on success'
+    required: false
+    default: ''
+  description:
+    description: 'Custom status description shown in GitHub'
+    required: false
+    default: ''
+
+runs:
+  using: composite
+  steps:
+    - name: Mark Deployment Successful
+      if: inputs.status == 'success'
+      shell: bash
+      run: |
+        if [ -z "${{ inputs.environment_url }}" ]; then
+          echo "⚠️  environment_url is empty — ZAP will not be able to determine the scan target."
+          echo "    Set environment_url to your deployed app URL for automatic ZAP triggering."
+        fi
+
+        DESCRIPTION="${{ inputs.description }}"
+        if [ -z "$DESCRIPTION" ]; then
+          DESCRIPTION="Deployment to ${{ inputs.environment }} succeeded"
+        fi
+
+        curl -s -X POST \
+          -H "Authorization: Bearer ${{ inputs.token }}" \
+          -H "Accept: application/vnd.github+json" \
+          -H "X-GitHub-Api-Version: 2022-11-28" \
+          https://api.github.com/repos/${{ github.repository }}/deployments/${{ inputs.deployment_id }}/statuses \
+          -d "{
+            \"state\": \"success\",
+            \"environment\": \"${{ inputs.environment }}\",
+            \"environment_url\": \"${{ inputs.environment_url }}\",
+            \"description\": \"$DESCRIPTION\"
+          }"
+
+        echo "✅ Deployment ${{ inputs.deployment_id }} marked as success"
+        echo "🔍 ZAP will scan: ${{ inputs.environment_url }}"
+
+    - name: Mark Deployment Failed
+      if: inputs.status == 'failure'
+      shell: bash
+      run: |
+        DESCRIPTION="${{ inputs.description }}"
+        if [ -z "$DESCRIPTION" ]; then
+          DESCRIPTION="Deployment to ${{ inputs.environment }} failed"
+        fi
+
+        curl -s -X POST \
+          -H "Authorization: Bearer ${{ inputs.token }}" \
+          -H "Accept: application/vnd.github+json" \
+          -H "X-GitHub-Api-Version: 2022-11-28" \
+          https://api.github.com/repos/${{ github.repository }}/deployments/${{ inputs.deployment_id }}/statuses \
+          -d "{
+            \"state\": \"failure\",
+            \"environment\": \"${{ inputs.environment }}\",
+            \"description\": \"$DESCRIPTION\"
+          }"
+
+        echo "❌ Deployment ${{ inputs.deployment_id }} marked as failure"
+        echo "ℹ️  ZAP scan will not trigger on failed deployments"

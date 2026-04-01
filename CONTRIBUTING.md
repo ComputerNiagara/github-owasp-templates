@@ -23,28 +23,6 @@ Thanks for your interest in contributing to github-owasp-templates.
 
 ---
 
-## Branch Protection
-
-The `main` branch is protected — direct pushes are not allowed, including from maintainers.
-
-All changes must go through a pull request:
-
-1. Fork the repo (external contributors)
-   or create a branch (if you have write access)
-2. Make your changes on the branch
-3. Open a PR targeting `main`
-4. Wait for review and approval
-5. Maintainer merges
-
-**Do not open a PR directly from your fork's `main` branch** — always work
-on a named branch so your fork's `main` stays clean and in sync with upstream.
-
-> **Note for first-time contributors:** Your first PR will require maintainer
-> approval before any GitHub Actions workflows run. This is a security measure
-> to prevent unknown code from consuming repository Actions minutes.
-
----
-
 ## Testing Your Changes
 
 Before submitting a PR, test your changes end to end:

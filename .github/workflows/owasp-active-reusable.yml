@@ -1,7 +1,7 @@
 # =============================================================================
 # OWASP Active Security Scan — Reusable Workflow
 # =============================================================================
-# Repo:  your-username/github-owasp-templates
+# Repo:  ComputerNiagara/github-owasp-templates
 # Path:  .github/workflows/owasp-active-reusable.yml
 #
 # Scans: ZAP Full Scan (web app active DAST)
@@ -22,7 +22,7 @@
 #   4. NEVER point this at DEV, IST, UAT, or production
 #
 # Reference this workflow from your app repo:
-#   uses: your-username/github-owasp-templates/.github/workflows/owasp-active-reusable.yml@v1
+#   uses: ComputerNiagara/github-owasp-templates/.github/workflows/owasp-active-reusable.yml@v1
 # =============================================================================
 
 name: OWASP Active Scan (Reusable)
@@ -137,7 +137,7 @@ jobs:
     runs-on: ${{ inputs.runner }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: ⚠️ Active Scan Starting
         run: |
@@ -146,14 +146,17 @@ jobs:
           echo "Environment: ${{ inputs.environment }}"
           echo "Time (UTC):  $(date -u)"
 
+      - name: Fix ZAP workspace permissions
+        run: chmod 777 ${{ github.workspace }}
+
       - name: ZAP Full Scan
-        uses: zaproxy/action-full-scan@v0.10.0
+        uses: zaproxy/action-full-scan@v0.13.0
         with:
           target: ${{ inputs.target_url }}
           token: ${{ secrets.GITHUB_TOKEN }}
           fail_action: ${{ inputs.fail_on_warn }}
           issue_title: '[${{ inputs.environment }}] ZAP Full Scan Findings'
-          artifact_name: 'zap-full-scan-report-${{ inputs.environment }}'
+          allow_issue_writing: true
           cmd_options: '-a'
 
   # ============================================================
@@ -167,7 +170,7 @@ jobs:
     runs-on: ${{ inputs.runner }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Validate OpenAPI Spec Provided
         run: |
@@ -184,14 +187,17 @@ jobs:
           echo "Environment: ${{ inputs.environment }}"
           echo "Time (UTC):  $(date -u)"
 
+      - name: Fix ZAP workspace permissions
+        run: chmod 777 ${{ github.workspace }}
+
       - name: ZAP API Scan
-        uses: zaproxy/action-api-scan@v0.7.0
+        uses: zaproxy/action-api-scan@v0.10.0
         with:
           target: ${{ inputs.openapi_spec_url }}
           token: ${{ secrets.GITHUB_TOKEN }}
           fail_action: ${{ inputs.fail_on_warn }}
           issue_title: '[${{ inputs.environment }}] ZAP API Scan Findings'
-          artifact_name: 'zap-api-scan-report-${{ inputs.environment }}'
+          allow_issue_writing: true
           format: openapi
 
   # ============================================================

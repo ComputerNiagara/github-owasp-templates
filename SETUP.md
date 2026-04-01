@@ -39,7 +39,7 @@ on:
 
 jobs:
   scan:
-    uses: ComputerNiagara/github-owasp-templates/.github/workflows/owasp-baseline-reusable.yml@v1
+    uses: ComputerNiagara/github-owasp-templates/.github/workflows/owasp-baseline-reusable.yml@main
     with:
       target_url: ${{ github.event.inputs.target_url }}
       environment: ${{ github.event.inputs.environment }}
@@ -70,31 +70,38 @@ Use the [basic-web-app example](examples/basic-web-app/.github/workflows/owasp-b
 
 ```yaml
 # In your existing deploy workflow
+permissions:
+  contents: read
+  deployments: write
+
 steps:
   - name: Create Deployment
     id: deployment
-    uses: ComputerNiagara/github-owasp-templates/.github/workflows/create-deployment.yml@v1
+    uses: ComputerNiagara/github-owasp-templates/actions/create-deployment@main
     with:
       environment: dev
+      token: ${{ secrets.GITHUB_TOKEN }}
 
   # --- your existing deploy steps ---
 
   - name: Report Success
     if: success()
-    uses: ComputerNiagara/github-owasp-templates/.github/workflows/update-deployment.yml@v1
+    uses: ComputerNiagara/github-owasp-templates/actions/update-deployment@main
     with:
       deployment_id: ${{ steps.deployment.outputs.deployment_id }}
       environment: dev
       status: success
       environment_url: 'https://your-app-dev.yourcompany.com'
+      token: ${{ secrets.GITHUB_TOKEN }}
 
   - name: Report Failure
     if: failure()
-    uses: ComputerNiagara/github-owasp-templates/.github/workflows/update-deployment.yml@v1
+    uses: ComputerNiagara/github-owasp-templates/actions/update-deployment@main
     with:
       deployment_id: ${{ steps.deployment.outputs.deployment_id }}
       environment: dev
       status: failure
+      token: ${{ secrets.GITHUB_TOKEN }}
 ```
 
 See the [deploy-integration example](examples/deploy-integration/) for the full file.

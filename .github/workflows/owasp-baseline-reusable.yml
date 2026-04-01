@@ -1,7 +1,7 @@
 # =============================================================================
 # OWASP Baseline Security Scan — Reusable Workflow
 # =============================================================================
-# Repo:  your-username/github-owasp-templates
+# Repo:  ComputerNiagara/github-owasp-templates
 # Path:  .github/workflows/owasp-baseline-reusable.yml
 #
 # Scan:  ZAP Baseline (passive DAST only)
@@ -12,7 +12,7 @@
 #        no workflow needed. Enable per repo via a dependabot.yml file.
 #
 # Reference this workflow from your app repo:
-#   uses: your-username/github-owasp-templates/.github/workflows/owasp-baseline-reusable.yml@v1
+#   uses: ComputerNiagara/github-owasp-templates/.github/workflows/owasp-baseline-reusable.yml@v1
 # =============================================================================
 
 name: OWASP Baseline Scan (Reusable)
@@ -105,16 +105,19 @@ jobs:
     runs-on: ${{ inputs.runner }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
+
+      - name: Fix ZAP workspace permissions
+        run: chmod 777 ${{ github.workspace }}
 
       - name: ZAP Baseline Scan
-        uses: zaproxy/action-baseline@v0.12.0
+        uses: zaproxy/action-baseline@v0.15.0
         with:
           target: ${{ inputs.target_url }}
           token: ${{ secrets.GITHUB_TOKEN }}
           fail_action: ${{ inputs.fail_on_warn }}
           issue_title: '[${{ inputs.environment }}] ZAP Baseline Findings'
-          artifact_name: 'zap-baseline-report-${{ inputs.environment }}'
+          allow_issue_writing: true
           # NOTE: cmd_options '-a' is intentionally omitted — that flag enables
           # active scanning. Active scanning belongs in owasp-active-reusable.yml.
           #

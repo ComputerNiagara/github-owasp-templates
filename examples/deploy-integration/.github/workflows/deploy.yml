@@ -5,17 +5,16 @@
 # OWASP baseline scan fires automatically after every successful deployment.
 #
 # HOW IT WORKS:
-#   1. create-deployment.yml creates a GitHub Deployment record at the start
+#   1. create-deployment action creates a GitHub Deployment record at the start
 #   2. Your deploy steps run as normal
-#   3. update-deployment.yml reports success + sets the environment_url
+#   3. update-deployment action reports success + sets the environment_url
 #   4. GitHub fires the deployment_status event
 #   5. owasp-baseline-scan.yml wakes up and scans the deployed URL
 #
 # SETUP:
-#   1. Replace ComputerNiagara/github-owasp-templates with your fork if using self-hosted runners
-#   2. Replace environment_url with your actual DEV app URL
-#   3. Add your actual deploy steps where indicated
-#   4. Add owasp-baseline-scan.yml to the same repo (see basic-web-app example)
+#   1. Replace environment_url with your actual DEV app URL
+#   2. Add your actual deploy steps where indicated
+#   3. Add owasp-baseline-scan.yml to the same repo (see basic-web-app example)
 # =============================================================================
 
 name: Deploy to DEV
@@ -24,6 +23,10 @@ on:
   push:
     branches: [main]
 
+permissions:
+  contents: read
+  deployments: write
+
 jobs:
   deploy:
     name: Deploy to DEV
@@ -31,19 +34,19 @@ jobs:
     steps:
       # ---------------------------------------------------------------
       # Step 1 — Create deployment record at the start
-      # Returns a deployment_id used in steps 2 and 3
       # ---------------------------------------------------------------
       - name: Create Deployment
         id: deployment
-        uses: ComputerNiagara/github-owasp-templates/.github/workflows/create-deployment.yml@v1
+        uses: ComputerNiagara/github-owasp-templates/actions/create-deployment@main
         with:
           environment: dev
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       # ---------------------------------------------------------------
       # Your existing deploy steps go here
       # ---------------------------------------------------------------
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Deploy Application
         run: |
@@ -53,23 +56,26 @@ jobs:
       # ---------------------------------------------------------------
       # Step 2 — Report success
       # Set environment_url to your live app URL — ZAP will scan this
+      # GitHub fires deployment_status event after this step
       # ---------------------------------------------------------------
       - name: Report Deployment Success
         if: success()
-        uses: ComputerNiagara/github-owasp-templates/.github/workflows/update-deployment.yml@v1
+        uses: ComputerNiagara/github-owasp-templates/actions/update-deployment@main
         with:
           deployment_id: ${{ steps.deployment.outputs.deployment_id }}
           environment: dev
           status: success
-          environment_url: 'https://your-app-dev.yourcompany.com'
+          environment_url: 'https://your-app-dev.yourcompany.com'  # TODO: replace
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       # ---------------------------------------------------------------
       # Step 3 — Report failure (ZAP will NOT fire on failure)
       # ---------------------------------------------------------------
       - name: Report Deployment Failure
         if: failure()
-        uses: ComputerNiagara/github-owasp-templates/.github/workflows/update-deployment.yml@v1
+        uses: ComputerNiagara/github-owasp-templates/actions/update-deployment@main
         with:
           deployment_id: ${{ steps.deployment.outputs.deployment_id }}
           environment: dev
           status: failure
+          token: ${{ secrets.GITHUB_TOKEN }}
