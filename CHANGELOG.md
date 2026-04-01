@@ -22,11 +22,17 @@ This project uses [Semantic Versioning](https://semver.org/).
 - `github.repository` in deployment workflows resolving to called repo instead of
   caller repo — fixed by moving to composite actions
 
+### Known Limitations
+- On personal GitHub.com accounts, `deployment_status` events created by
+  `github-actions[bot]` do not fire reliably. This is a personal account limitation
+  and does not affect GitHub Enterprise where the event fires correctly.
+  Workaround for personal testing: use `repository_dispatch` — see test repo for reference.
+
 ---
 
 ## [v1.0.0-beta] — 2026
 
-> ⚠️ POC — not yet fully tested in production.
+> ⚠️ POC — not yet fully tested in production. API may change before stable release.
 
 ### Added
 

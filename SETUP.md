@@ -110,6 +110,13 @@ See the [deploy-integration example](examples/deploy-integration/) for the full 
 
 Push a change. The deploy runs, reports success, and the baseline scan fires automatically.
 
+> **Note:** On personal GitHub.com accounts, `deployment_status` events created by
+> `github-actions[bot]` may not fire reliably. This is a personal account limitation
+> and does not affect GitHub Enterprise. If testing on a personal account, use the
+> `repository_dispatch` pattern shown in the test repo — see
+> [github-owasp-zap-test-app](https://github.com/ComputerNiagara/github-owasp-zap-test-app)
+> for reference.
+
 ---
 
 ## Option 3 — Active Scan (Approval Gated)
