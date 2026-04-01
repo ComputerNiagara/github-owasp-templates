@@ -78,7 +78,7 @@ jobs:
   active-scan:
     name: Active Scan [${{ github.event.inputs.scan_type }}]
     needs: preflight-check
-    uses: ComputerNiagara/github-owasp-templates/.github/workflows/owasp-active-reusable.yml@v1
+    uses: ComputerNiagara/github-owasp-templates/.github/workflows/owasp-active-reusable.yml@main
     with:
       scan_type: ${{ github.event.inputs.scan_type }}
       target_url: ${{ github.event.inputs.target_url }}

@@ -1,7 +1,7 @@
 # =============================================================================
 # OWASP Active Security Scan — Reusable Workflow
 # =============================================================================
-# Repo:  your-username/github-owasp-templates
+# Repo:  ComputerNiagara/github-owasp-templates
 # Path:  .github/workflows/owasp-active-reusable.yml
 #
 # Scans: ZAP Full Scan (web app active DAST)
@@ -22,7 +22,7 @@
 #   4. NEVER point this at DEV, IST, UAT, or production
 #
 # Reference this workflow from your app repo:
-#   uses: your-username/github-owasp-templates/.github/workflows/owasp-active-reusable.yml@v1
+#   uses: ComputerNiagara/github-owasp-templates/.github/workflows/owasp-active-reusable.yml@v1
 # =============================================================================
 
 name: OWASP Active Scan (Reusable)

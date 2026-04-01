@@ -1,7 +1,7 @@
 # =============================================================================
 # OWASP Baseline Security Scan — Reusable Workflow
 # =============================================================================
-# Repo:  your-username/github-owasp-templates
+# Repo:  ComputerNiagara/github-owasp-templates
 # Path:  .github/workflows/owasp-baseline-reusable.yml
 #
 # Scan:  ZAP Baseline (passive DAST only)
@@ -12,7 +12,7 @@
 #        no workflow needed. Enable per repo via a dependabot.yml file.
 #
 # Reference this workflow from your app repo:
-#   uses: your-username/github-owasp-templates/.github/workflows/owasp-baseline-reusable.yml@v1
+#   uses: ComputerNiagara/github-owasp-templates/.github/workflows/owasp-baseline-reusable.yml@v1
 # =============================================================================
 
 name: OWASP Baseline Scan (Reusable)

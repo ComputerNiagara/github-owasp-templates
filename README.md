@@ -5,8 +5,8 @@
 [![GitHub forks](https://img.shields.io/github/forks/ComputerNiagara/github-owasp-templates)](https://github.com/ComputerNiagara/github-owasp-templates/network)
 
 > **⚠️ Proof of Concept**
-> This repo is a work in progress and has not yet been fully tested.
-> Workflows may change between versions including breaking changes before v1.0.0 is stable.
+> This repo is a work in progress and has not been fully tested in production.
+> Workflows and actions may change before a stable `v1` release.
 > Use at your own risk. Contributions and feedback welcome — see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 Reusable GitHub Actions workflows for automated OWASP security scanning. Drop into any repo in minutes — no OWASP expertise required.
@@ -46,7 +46,7 @@ on:
 
 jobs:
   scan:
-    uses: ComputerNiagara/github-owasp-templates/.github/workflows/owasp-baseline-reusable.yml@v1
+    uses: ComputerNiagara/github-owasp-templates/.github/workflows/owasp-baseline-reusable.yml@main
     with:
       target_url: ${{ github.event.inputs.target_url }}
       environment: ${{ github.event.inputs.environment }}
@@ -96,9 +96,9 @@ sequenceDiagram
     participant GH as GitHub
     participant ZAP as ZAP Scanner
 
-    Pipeline->>GH: create-deployment.yml
+    Pipeline->>GH: create-deployment action
     Pipeline->>Pipeline: Deploy app
-    Pipeline->>GH: update-deployment.yml<br/>(status: success, url: https://app-dev.com)
+    Pipeline->>GH: update-deployment action<br/>(status: success, url: https://app-dev.com)
     Note over GH: deployment_status event fires
     GH->>ZAP: owasp-baseline-scan.yml triggered
     ZAP->>GH: Results posted
@@ -150,17 +150,33 @@ See [Active Scan Setup](#active-scan-setup).
 
 ---
 
-### `create-deployment.yml` + `update-deployment.yml`
+### `create-deployment` + `update-deployment` (Composite Actions)
 
-Creates and updates GitHub Deployment records to trigger automatic ZAP scanning
-after deployments. Works with both GitHub Actions and Azure DevOps pipelines.
+Composite actions that create and update GitHub Deployment records to trigger
+automatic ZAP scanning after deployments. Run as steps inside your existing
+deploy job — no separate runner needed. Works with both GitHub Actions and
+Azure DevOps pipelines.
+
+**`create-deployment`** — call at the start of your deploy job:
 
 | Input | Required | Description |
 |-------|----------|-------------|
-| `environment` | ✅ | Environment name — must match ZAP filter (`dev`, `staging`, `uat`) |
-| `deployment_id` | ✅ (update only) | ID returned by `create-deployment.yml` |
-| `status` | ✅ (update only) | `success` or `failure` |
-| `environment_url` | ❌ (update only) | Live app URL — **required for ZAP to scan** |
+| `environment` | ✅ | Environment name — must match ZAP filter (`dev`, `ist`, `uat`) |
+| `token` | ✅ | `${{ secrets.GITHUB_TOKEN }}` with deployments write permission |
+| `ref` | ❌ | Git ref to deploy — defaults to current commit SHA |
+
+**Output:** `deployment_id` — pass this to `update-deployment`
+
+**`update-deployment`** — call at the end of your deploy job:
+
+| Input | Required | Description |
+|-------|----------|-------------|
+| `deployment_id` | ✅ | ID returned by `create-deployment` |
+| `environment` | ✅ | Must match ZAP filter (`dev`, `ist`, `uat`) |
+| `status` | ✅ | `success` or `failure` |
+| `token` | ✅ | `${{ secrets.GITHUB_TOKEN }}` |
+| `environment_url` | ❌ | Live app URL — **required for ZAP to trigger** |
+| `description` | ❌ | Custom status description |
 
 ---
 
@@ -194,7 +210,7 @@ after deployments. Works with both GitHub Actions and Azure DevOps pipelines.
 Reference the workflows directly — no fork needed:
 
 ```yaml
-uses: ComputerNiagara/github-owasp-templates/.github/workflows/owasp-baseline-reusable.yml@v1
+uses: ComputerNiagara/github-owasp-templates/.github/workflows/owasp-baseline-reusable.yml@main
 with:
   target_url: 'https://your-public-app.com'
   environment: dev
@@ -226,7 +242,7 @@ The runner needs:
 
 **3. Reference your fork in your workflows**
 ```yaml
-uses: YOUR-ORG/github-owasp-templates/.github/workflows/owasp-baseline-reusable.yml@v1
+uses: YOUR-ORG/github-owasp-templates/.github/workflows/owasp-baseline-reusable.yml@main
 with:
   target_url: 'https://internal-app.yourcompany.com'
   environment: dev
@@ -265,18 +281,23 @@ Before using the active scan:
 
 ## Versioning
 
-This repo uses semantic versioning. Reference a specific version in your workflows:
+This repo uses semantic versioning. During the current POC phase all references
+use `@main`. Once stable, a `v1` tag will be created and references updated to `@v1`.
 
 ```yaml
+# Current — use during POC / testing
+uses: ComputerNiagara/github-owasp-templates/.github/workflows/owasp-baseline-reusable.yml@main
+
+# Future — pin to stable release tag once created
 uses: ComputerNiagara/github-owasp-templates/.github/workflows/owasp-baseline-reusable.yml@v1
 ```
 
-| Tag | Status | Notes |
+| Ref | Status | Notes |
 |-----|--------|-------|
-| `@v1` | ⚠️ Beta | Work in progress — not production tested |
-| `@main` | 🚧 Development | May include breaking changes |
+| `@main` | ✅ Current | Use during POC — always latest |
+| `@v1` | 🔜 Planned | Stable release — not yet tagged |
 
-Pin to `@v1` in production. Use `@main` only for testing.
+Pin to `@v1` in production once the tag is created. Use `@main` for testing.
 
 ---
 

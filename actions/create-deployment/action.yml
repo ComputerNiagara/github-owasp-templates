@@ -1,0 +1,89 @@
+# =============================================================================
+# Create GitHub Deployment — Composite Action
+# =============================================================================
+# Repo:  ComputerNiagara/github-owasp-templates
+# Path:  actions/create-deployment/action.yml
+#
+# Purpose: Creates a GitHub Deployment record at the START of your deploy job.
+#          Returns a deployment_id that you pass to update-deployment at the
+#          end of the job to report success or failure.
+#
+#          Runs in the caller's context — github.repository and github.sha
+#          resolve to the calling repo automatically. No extra inputs needed.
+#
+# Usage in your deploy workflow:
+#   steps:
+#     - name: Create Deployment
+#       id: deployment
+#       uses: ComputerNiagara/github-owasp-templates/actions/create-deployment@v1
+#       with:
+#         environment: dev
+#         token: ${{ secrets.GITHUB_TOKEN }}
+#
+#     - name: Report Success
+#       uses: ComputerNiagara/github-owasp-templates/actions/update-deployment@v1
+#       with:
+#         deployment_id: ${{ steps.deployment.outputs.deployment_id }}
+#         environment: dev
+#         status: success
+#         environment_url: 'https://your-app-dev.yourcompany.com'
+#         token: ${{ secrets.GITHUB_TOKEN }}
+# =============================================================================
+
+name: 'Create GitHub Deployment'
+description: 'Creates a GitHub Deployment record to enable automatic OWASP ZAP scanning after deployments'
+
+inputs:
+  environment:
+    description: 'Environment being deployed to (e.g. dev, ist, uat)'
+    required: true
+  token:
+    description: 'GitHub token with deployments write permission'
+    required: true
+  ref:
+    description: 'Git ref to deploy — defaults to the current commit SHA'
+    required: false
+    default: ''
+
+outputs:
+  deployment_id:
+    description: 'GitHub Deployment ID — pass this to update-deployment'
+    value: ${{ steps.create.outputs.deployment_id }}
+
+runs:
+  using: composite
+  steps:
+    - name: Create GitHub Deployment
+      id: create
+      shell: bash
+      run: |
+        REF="${{ inputs.ref }}"
+        if [ -z "$REF" ]; then REF="${{ github.sha }}"; fi
+
+        echo "Creating deployment in: ${{ github.repository }}"
+        echo "Environment: ${{ inputs.environment }}"
+        echo "Ref: $REF"
+
+        RESPONSE=$(curl -s -X POST \
+          -H "Authorization: Bearer ${{ inputs.token }}" \
+          -H "Accept: application/vnd.github+json" \
+          -H "X-GitHub-Api-Version: 2022-11-28" \
+          https://api.github.com/repos/${{ github.repository }}/deployments \
+          -d "{
+            \"ref\": \"$REF\",
+            \"environment\": \"${{ inputs.environment }}\",
+            \"description\": \"Deploying to ${{ inputs.environment }}\",
+            \"auto_merge\": false,
+            \"required_contexts\": []
+          }")
+
+        DEPLOYMENT_ID=$(echo $RESPONSE | jq -r '.id')
+
+        if [ "$DEPLOYMENT_ID" = "null" ] || [ -z "$DEPLOYMENT_ID" ]; then
+          echo "❌ Failed to create deployment. Response:"
+          echo $RESPONSE | jq .
+          exit 1
+        fi
+
+        echo "✅ Created deployment ID: $DEPLOYMENT_ID"
+        echo "deployment_id=$DEPLOYMENT_ID" >> $GITHUB_OUTPUT
