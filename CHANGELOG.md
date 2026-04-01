@@ -32,7 +32,7 @@ This project uses [Semantic Versioning](https://semver.org/).
 
 ## [v1.0.0-beta] — 2026
 
-> ⚠️ POC — not yet fully tested in production. API may change before stable release.
+> ⚠️ POC — not yet fully tested in production.
 
 ### Added
 
