@@ -156,17 +156,8 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           fail_action: ${{ inputs.fail_on_warn }}
           issue_title: '[${{ inputs.environment }}] ZAP Full Scan Findings'
-          artifact_name: ''
           allow_issue_writing: true
           cmd_options: '-a'
-
-      - name: Upload ZAP Full Scan Report
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: zap-full-scan-report
-          path: report_html.html
-          if-no-files-found: warn
 
   # ============================================================
   # ZAP API Scan — API Active DAST
@@ -206,17 +197,8 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           fail_action: ${{ inputs.fail_on_warn }}
           issue_title: '[${{ inputs.environment }}] ZAP API Scan Findings'
-          artifact_name: ''
           allow_issue_writing: true
           format: openapi
-
-      - name: Upload ZAP API Scan Report
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: zap-api-scan-report
-          path: report_html.html
-          if-no-files-found: warn
 
   # ============================================================
   # Summary
